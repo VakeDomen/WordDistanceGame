@@ -4,6 +4,7 @@ use actix_web_httpauth::middleware::HttpAuthentication;
 use crate::{
     auth::jwt::validator,
     db::init_database,
+    helpers::generator::spawn_weekly_generator,
     routes::{
         echo::echo,
         games_active::get_active_games,
@@ -13,6 +14,7 @@ use crate::{
 
 mod auth;
 mod db;
+mod helpers;
 mod models;
 mod routes;
 
@@ -34,6 +36,8 @@ async fn main() -> std::io::Result<()> {
             "Invalid port",
         ));
     };
+
+    spawn_weekly_generator();
 
     HttpServer::new(|| {
         App::new()

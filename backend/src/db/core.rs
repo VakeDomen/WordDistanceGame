@@ -124,15 +124,12 @@ fn run_migrations(conn: &Conn) -> Result<(), DbError> {
             id TEXT PRIMARY KEY,
             week INTEGER NOT NULL,
             word TEXT NOT NULL,
-            active INTEGER NOT NULL DEFAULT 1,
-            embedding BLOB,
+            embedding TEXT,
             created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
             updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
         );
         CREATE UNIQUE INDEX IF NOT EXISTS idx_target_words_week_word
             ON target_words(week, word);
-        CREATE INDEX IF NOT EXISTS idx_target_words_active
-            ON target_words(active);
         CREATE TRIGGER IF NOT EXISTS trg_target_words_updated_at
         AFTER UPDATE ON target_words
         FOR EACH ROW BEGIN
