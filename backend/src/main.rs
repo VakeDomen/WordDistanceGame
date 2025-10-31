@@ -6,6 +6,7 @@ use crate::{
     db::init_database,
     routes::{
         echo::echo,
+        games_active::get_active_games,
         login::{login_employee, login_student},
     },
 };
@@ -41,7 +42,8 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::scope("/api")
                     .wrap(HttpAuthentication::bearer(validator))
-                    .service(echo),
+                    .service(echo)
+                    .service(get_active_games),
             )
     })
     .bind(("127.0.0.1", port))?
