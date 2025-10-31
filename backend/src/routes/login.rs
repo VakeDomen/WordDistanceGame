@@ -1,8 +1,11 @@
-use actix_web::{HttpResponse, http::StatusCode, post, web};
+use actix_web::{HttpResponse, post, web};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    auth::ldap::{employee_ldap_login, stdent_ldap_login},
+    auth::{
+        jwt::generate_token,
+        ldap::{employee_ldap_login, stdent_ldap_login},
+    },
     db::{get_connection, types::DbError},
     models::user::{NewUser, PublicUser, User},
 };
@@ -17,6 +20,7 @@ pub struct LoginRequest {
 pub struct LoginResponse {
     pub user: PublicUser,
     pub created: bool,
+    pub token: String,
 }
 
 #[post("/login/student")]
@@ -93,8 +97,19 @@ where
         }
     };
 
+    // issue JWT
+    let token = match generate_token(&user.id) {
+        Ok(t) => t,
+        Err(e) => {
+            return Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": format!("failed to generate token: {e}")
+            })));
+        }
+    };
+
     Ok(HttpResponse::Ok().json(LoginResponse {
         user: PublicUser::from(user),
         created,
+        token,
     }))
 }

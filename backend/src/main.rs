@@ -1,8 +1,13 @@
-use actix_web::{App, HttpServer};
+use actix_web::{App, HttpServer, web};
+use actix_web_httpauth::middleware::HttpAuthentication;
 
 use crate::{
+    auth::jwt::validator,
     db::init_database,
-    routes::login::{login_employee, login_student},
+    routes::{
+        echo::echo,
+        login::{login_employee, login_student},
+    },
 };
 
 mod auth;
@@ -29,8 +34,17 @@ async fn main() -> std::io::Result<()> {
         ));
     };
 
-    HttpServer::new(|| App::new().service(login_employee).service(login_student))
-        .bind(("127.0.0.1", port))?
-        .run()
-        .await
+    HttpServer::new(|| {
+        App::new()
+            .service(login_employee)
+            .service(login_student)
+            .service(
+                web::scope("/api")
+                    .wrap(HttpAuthentication::bearer(validator))
+                    .service(echo),
+            )
+    })
+    .bind(("127.0.0.1", port))?
+    .run()
+    .await
 }
