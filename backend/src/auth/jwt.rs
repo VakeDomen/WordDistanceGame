@@ -1,4 +1,4 @@
-use actix_web::{HttpMessage, dev::ServiceRequest, http::Error};
+use actix_web::{HttpMessage, dev::ServiceRequest};
 use actix_web_httpauth::extractors::bearer::BearerAuth;
 use chrono::{Duration, Utc};
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
@@ -54,7 +54,7 @@ pub fn decode_token(token: &str) -> Result<Claims, String> {
 }
 
 pub async fn validator(
-    mut req: ServiceRequest,
+    req: ServiceRequest,
     credentials: BearerAuth,
 ) -> Result<ServiceRequest, (actix_web::error::Error, ServiceRequest)> {
     let token = credentials.token();
