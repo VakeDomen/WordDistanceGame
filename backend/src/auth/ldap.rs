@@ -33,7 +33,7 @@ async fn check_login(
         .search(
             "dc=upr,dc=si",
             Scope::Subtree,
-            format!("(uid={})", username).as_str(),
+            format!("(uid={username})").as_str(),
             vec!["dn", "sn", "cn"],
         )
         .await?
@@ -59,7 +59,7 @@ async fn check_login(
                     user_entry = Some(entry.dn);
                 }
             }
-            Err(e) => println!("Error binding to ldap: {:?}", e),
+            Err(e) => println!("Error binding to ldap: {e:?}"),
         }
     }
     Ok(user_entry)

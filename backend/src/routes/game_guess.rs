@@ -1,12 +1,11 @@
 use actix_web::{HttpResponse, post, web};
-use chrono::{Datelike, Local};
 use rusqlite::{OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     auth::jwt::Claims,
     db::{get_connection, types::DbError},
-    helpers::{embeddings::fetch_single_embedding_vec_async, generator::get_week_code},
+    helpers::generator::get_week_code,
     models::{target_word::TargetWord, word::Word},
 };
 
@@ -31,7 +30,7 @@ pub async fn guess_word(
     let user_id = &claims.sub;
     let game_seq = *path;
 
-    if game_seq < 0 || game_seq >= 100 {
+    if !(0..100).contains(&game_seq) {
         return Ok(HttpResponse::BadRequest().json(serde_json::json!({
             "error": "game_seq must be in [0, 99]"
         })));

@@ -14,7 +14,7 @@ struct Resp {
 
 pub fn fetch_single_embedding_json_blocking(word: &str) -> Result<String, DbError> {
     let Ok(url) = env::var("OLLAMA_EMBEDDING_ENDPOINT") else {
-        return Err(DbError::Other(format!("Ollama endpoint not defined")));
+        return Err(DbError::Other("Ollama endpoint not defined".to_string()));
     };
 
     let positioned_word = ["Slovenska beseda: ", word].join("");
@@ -33,8 +33,7 @@ pub fn fetch_single_embedding_json_blocking(word: &str) -> Result<String, DbErro
     if !status.is_success() {
         let txt = resp.text().unwrap_or_default();
         return Err(DbError::Other(format!(
-            "embedding server {}: {}",
-            status, txt
+            "embedding server {status}: {txt}"
         )));
     }
 
@@ -80,7 +79,7 @@ pub async fn fetch_single_embedding_vec_async(word: &str) -> Result<Vec<f32>, St
     let status = resp.status();
     if status != StatusCode::OK {
         let text = resp.text().await.unwrap_or_default();
-        return Err(format!("embedding server status {}: {}", status, text));
+        return Err(format!("embedding server status {status}: {text}"));
     }
     let parsed: Resp = resp.json().await.map_err(|e| e.to_string())?;
     parsed

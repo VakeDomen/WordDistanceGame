@@ -1,6 +1,5 @@
 use rusqlite::Row;
 use serde::Serialize;
-use uuid::Uuid;
 
 use crate::{
     db::{get_connection, types::DbError},
@@ -50,7 +49,7 @@ impl Embedding {
         let mut rows = stmt.query([word_id.to_string()])?;
         let mut out = Vec::new();
         while let Some(r) = rows.next()? {
-            out.push(Embedding::try_from(map_row(&r)?)?);
+            out.push(Embedding::try_from(map_row(r)?)?);
         }
         Ok(out)
     }
@@ -64,7 +63,7 @@ impl TryFrom<EmbeddingId> for Embedding {
             conn.prepare("SELECT id, word_id, text, embedding FROM embedding WHERE id = ?1")?;
         let mut rows = stmt.query([value])?;
         while let Some(r) = rows.next()? {
-            return Ok(Embedding::try_from(map_row(&r)?)?);
+            return Embedding::try_from(map_row(r)?);
         }
         Err(DbError::NotFound)
     }

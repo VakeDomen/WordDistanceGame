@@ -88,7 +88,7 @@ impl TargetWord {
             [id.to_string()],
             map_row_sqlite,
         )?;
-        Ok(TargetWord::try_from(s)?)
+        TargetWord::try_from(s)
     }
 
     pub fn get_active_for_week(conn: &Conn, week: i64) -> Result<Vec<TargetWord>, DbError> {
@@ -109,7 +109,7 @@ impl TargetWord {
         let conn = get_connection()?;
         let week_code = get_week_code();
 
-        println!("Week: {} {}", week_code, seq);
+        println!("Week: {week_code} {seq}");
         let mut stmt = conn.prepare(
             "SELECT id, week, word_id, created_at, updated_at
              FROM target_words WHERE week = ?1 AND seq = ?2
@@ -124,7 +124,7 @@ impl TargetWord {
             return Err(DbError::NotFound);
         };
 
-        Ok(TargetWord::try_from(row)?)
+        TargetWord::try_from(row)
     }
 }
 

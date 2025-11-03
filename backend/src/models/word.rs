@@ -1,10 +1,7 @@
-use chrono::{Datelike, Local};
 use rusqlite::Row;
-use uuid::Uuid;
 
 use crate::{
     db::{get_connection, types::DbError},
-    helpers::generator::get_week_code,
     models::embedding::Embedding,
 };
 

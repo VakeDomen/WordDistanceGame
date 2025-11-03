@@ -22,13 +22,13 @@ pub enum DbError {
 impl fmt::Display for DbError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            DbError::MissingEnv(e) => write!(f, "missing env var: {}", e),
-            DbError::Io(e) => write!(f, "io error: {}", e),
-            DbError::Sql(e) => write!(f, "sqlite error: {}", e),
-            DbError::Pool(e) => write!(f, "pool error: {}", e),
+            DbError::MissingEnv(e) => write!(f, "missing env var: {e}"),
+            DbError::Io(e) => write!(f, "io error: {e}"),
+            DbError::Sql(e) => write!(f, "sqlite error: {e}"),
+            DbError::Pool(e) => write!(f, "pool error: {e}"),
             DbError::AlreadyInitialized => write!(f, "database already initialized"),
             DbError::NotInitialized => write!(f, "database not initialized"),
-            DbError::Other(s) => write!(f, "{}", s),
+            DbError::Other(s) => write!(f, "{s}"),
             DbError::NotFound => write!(f, "No value found"),
         }
     }
