@@ -3,7 +3,13 @@ use rusqlite::{Row, params};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::db::types::{Conn, DbError};
+use crate::{
+    db::{
+        get_connection,
+        types::{Conn, DbError},
+    },
+    models::game_entry::GameEntry,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Game {
@@ -14,6 +20,7 @@ pub struct Game {
     pub completed: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub attempts: Vec<GameEntry>,
 }
 
 #[derive(Debug, Clone)]
@@ -46,17 +53,23 @@ pub struct NewGame {
     pub completed: bool,
 }
 
-impl From<SqliteGame> for Game {
-    fn from(s: SqliteGame) -> Self {
-        Game {
-            id: Uuid::parse_str(&s.id).unwrap(),
+impl TryFrom<SqliteGame> for Game {
+    type Error = DbError;
+
+    fn try_from(s: SqliteGame) -> Result<Self, DbError> {
+        let id = Uuid::parse_str(&s.id).unwrap();
+        let attempts = GameEntry::get_for_game(&id)?;
+
+        Ok(Self {
+            id,
             user_id: Uuid::parse_str(&s.user_id).unwrap(),
             week: s.week,
             game_seq_num: s.game_seq_num,
             completed: s.completed != 0,
             created_at: s.created_at.parse().unwrap(),
             updated_at: s.updated_at.parse().unwrap(),
-        }
+            attempts,
+        })
     }
 }
 
@@ -127,7 +140,18 @@ impl Game {
             params![id_str],
             map_row,
         )?;
-        Ok(Game::from(s))
+        Ok(Game::try_from(s)?)
+    }
+
+    pub fn get_by_week_and_seq(week: i64, seq: i64) -> Result<Game, DbError> {
+        let conn = get_connection()?;
+        let s: SqliteGame = conn.query_row(
+            "SELECT id, user_id, week, game_seq_num, completed, created_at, updated_at
+             FROM games WHERE week = ?1 AND game_seq_num = ?2",
+            params![week, seq],
+            map_row,
+        )?;
+        Ok(Game::try_from(s)?)
     }
 
     pub fn get_user_games(conn: &Conn, user_id: &Uuid) -> Result<Vec<Game>, DbError> {
@@ -140,7 +164,7 @@ impl Game {
         let rows = stmt.query_map(params![user_id.to_string()], map_row)?;
         let mut out = Vec::new();
         for r in rows {
-            out.push(Game::from(r?));
+            out.push(Game::try_from(r?)?);
         }
         Ok(out)
     }

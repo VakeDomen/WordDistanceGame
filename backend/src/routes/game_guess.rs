@@ -30,7 +30,7 @@ pub async fn guess_word(
     let user_id = &claims.sub;
     let game_seq = *path;
 
-    if !(0..100).contains(&game_seq) {
+    if !(1..101).contains(&game_seq) {
         return Ok(HttpResponse::BadRequest().json(serde_json::json!({
             "error": "game_seq must be in [0, 99]"
         })));

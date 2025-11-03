@@ -7,6 +7,7 @@ use crate::{
     helpers::generator::spawn_weekly_generator,
     routes::{
         echo::echo,
+        game_attempts::get_attempts,
         game_guess::guess_word,
         games_active::get_active_games,
         login::{login_employee, login_student},
@@ -49,7 +50,8 @@ async fn main() -> std::io::Result<()> {
                     .wrap(HttpAuthentication::bearer(validator))
                     .service(echo)
                     .service(get_active_games)
-                    .service(guess_word),
+                    .service(guess_word)
+                    .service(get_attempts),
             )
     })
     .bind(("127.0.0.1", port))?

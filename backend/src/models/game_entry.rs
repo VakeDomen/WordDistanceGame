@@ -3,7 +3,10 @@ use rusqlite::{Row, params};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::db::types::{Conn, DbError};
+use crate::db::{
+    get_connection,
+    types::{Conn, DbError},
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameEntry {
@@ -126,7 +129,8 @@ impl GameEntry {
         Ok(GameEntry::from(e))
     }
 
-    pub fn get_for_game(conn: &Conn, game_id: &Uuid) -> Result<Vec<GameEntry>, DbError> {
+    pub fn get_for_game(game_id: &Uuid) -> Result<Vec<GameEntry>, DbError> {
+        let conn = get_connection()?;
         let mut stmt = conn.prepare(
             "SELECT id, game_id, attempt_seq, value, dist, created_at, updated_at
              FROM game_entries
