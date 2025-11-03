@@ -1,10 +1,11 @@
 use chrono::{Datelike, Local};
 use rand::{SeedableRng, rngs::StdRng, seq::SliceRandom};
 use rusqlite::params;
-use std::{env, fs, path::Path, thread, time::Duration};
+use std::{thread, time::Duration};
 
 use crate::db::{get_connection, types::DbError};
 use crate::models::target_word::{NewTargetWord, SqliteTargetWord};
+use crate::models::word::Word;
 
 pub fn spawn_weekly_generator() {
     thread::spawn(|| {
@@ -36,87 +37,57 @@ fn ensure_week_words_blocking(week_code: i64) -> Result<(), DbError> {
         return Ok(());
     }
 
-    let content = read_wordlist()?;
-    let mut all_words: Vec<String> = content
-        .lines()
-        .map(|s| s.trim())
-        .filter(|s| !s.is_empty())
-        .map(|s| s.to_string())
-        .collect();
+    let mut all_word_ids = Word::all_ids()?;
 
-    if all_words.len() < 100 {
+    if all_word_ids.len() < 100 {
         return Err(DbError::Other(
             "word list must have at least 100 words".into(),
         ));
     }
 
     let mut rng = StdRng::seed_from_u64(week_code as u64);
-    all_words.shuffle(&mut rng);
-    let selected: Vec<String> = all_words.into_iter().take(100).collect();
+    all_word_ids.shuffle(&mut rng);
+    let selected: Vec<String> = all_word_ids.into_iter().take(100).collect();
 
-    // build SqliteTargetWord records; each TryFrom does one blocking HTTP call
     let mut to_insert = Vec::with_capacity(100);
     for w in selected {
         let new = NewTargetWord {
             week: week_code,
-            word: w,
+            word_id: w,
         };
 
-        let mut stw = None;
-        let mut attempts = 0;
-        while stw.is_none() && attempts < 5 {
-            stw = SqliteTargetWord::try_from(new.clone()).ok();
-            attempts += 1;
-        }
-        if stw.is_none() {
-            return Err(DbError::Other(
-                "Can't initialize vector. Ollama problem.".into(),
-            ));
-        }
-        to_insert.push(stw.unwrap());
+        to_insert.push(SqliteTargetWord::from(new.clone()));
     }
 
     let tx = conn.unchecked_transaction()?;
+    let mut inserted = 0;
     {
         let mut stmt = tx.prepare(
-            "INSERT OR IGNORE INTO target_words (id, week, word, embedding, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            "INSERT OR IGNORE INTO target_words
+                     (id, week, word_id, seq, created_at, updated_at)
+                     VALUES (?1, ?2, ?3, ?4,
+                             strftime('%Y-%m-%dT%H:%M:%fZ','now'),
+                             strftime('%Y-%m-%dT%H:%M:%fZ','now'))",
         )?;
+
         for stw in to_insert {
-            let created_at = stw
-                .created_at
-                .to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
-            let updated_at = stw
-                .updated_at
-                .to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
-            stmt.execute(params![
+            // adjust to_string calls if word_id is a Uuid
+            let changed = stmt.execute(params![
                 stw.id.to_string(),
                 stw.week,
-                stw.word,
-                stw.embedding_json,
-                created_at,
-                updated_at
+                stw.word_id.to_string(),
+                inserted,
             ])?;
+            inserted += changed as usize;
         }
     }
     tx.commit()?;
+    println!("[weekly generator] Generated words for the new week");
     Ok(())
 }
 
-fn read_wordlist() -> Result<String, DbError> {
-    let candidates = [
-        env::var("WORDLIST_PATH").unwrap_or_default(),
-        "backend/resources/cleaned_wordlist.txt".to_string(),
-        "resources/cleaned_wordlist.txt".to_string(),
-    ];
-    for p in candidates {
-        if p.is_empty() {
-            continue;
-        }
-        let path = Path::new(&p);
-        if path.exists() {
-            return Ok(fs::read_to_string(path)?);
-        }
-    }
-    Err(DbError::Other("word list not found".into()))
+pub fn get_week_code() -> i64 {
+    let now = Local::now();
+    let iso = now.iso_week();
+    (iso.year() as i64) * 100 + (iso.week() as i64)
 }

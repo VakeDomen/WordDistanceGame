@@ -121,22 +121,42 @@ fn run_migrations(conn: &Conn) -> Result<(), DbError> {
     conn.execute_batch(
         r#"
         CREATE TABLE IF NOT EXISTS target_words (
-            id TEXT PRIMARY KEY,
-            week INTEGER NOT NULL,
-            word TEXT NOT NULL,
-            embedding TEXT,
+            id         TEXT PRIMARY KEY, -- uuid v4
+            week       INTEGER NOT NULL,
+            word_id    TEXT NOT NULL,    -- fk to word_list(id)
+            seq        INTEGER NOT NULL CHECK (seq BETWEEN 0 AND 99),
             created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-            updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+            updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+            UNIQUE(week, seq),
+            UNIQUE(week, word_id),
+            FOREIGN KEY(word_id) REFERENCES word_list(id) ON DELETE CASCADE ON UPDATE CASCADE
         );
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_target_words_week_word
-            ON target_words(week, word);
+        CREATE INDEX IF NOT EXISTS idx_target_words_week ON target_words(week);
         CREATE TRIGGER IF NOT EXISTS trg_target_words_updated_at
         AFTER UPDATE ON target_words
         FOR EACH ROW BEGIN
-            UPDATE target_words SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
-            WHERE id = OLD.id;
+            UPDATE target_words SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = OLD.id;
         END;
         "#,
+    )?;
+
+    conn.execute_batch(
+        r#"
+    CREATE TABLE IF NOT EXISTS word_list (
+        id   TEXT PRIMARY KEY,       -- uuid v4
+        word TEXT NOT NULL UNIQUE
+    );
+
+    CREATE TABLE IF NOT EXISTS embedding (
+        id         TEXT PRIMARY KEY, -- uuid v4
+        word_id    TEXT NOT NULL,    -- fk to word_list(id)
+        text       TEXT NOT NULL,    -- the meaning/definition text you embedded
+        embedding  TEXT NOT NULL,    -- JSON string: [f32, f32, ...]
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+        FOREIGN KEY(word_id) REFERENCES word_list(id) ON DELETE CASCADE ON UPDATE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_embedding_word ON embedding(word_id);
+    "#,
     )?;
 
     Ok(())

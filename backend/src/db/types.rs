@@ -1,9 +1,8 @@
 use std::{env, error::Error, fmt};
 
-use r2d2::{Pool, PooledConnection};
+use r2d2::PooledConnection;
 use r2d2_sqlite::{SqliteConnectionManager, rusqlite};
 
-pub type DbPool = Pool<SqliteConnectionManager>;
 pub type DbPooled = PooledConnection<SqliteConnectionManager>;
 pub type Conn = rusqlite::Connection;
 
@@ -17,6 +16,7 @@ pub enum DbError {
     AlreadyInitialized,
     NotInitialized,
     Other(String),
+    NotFound,
 }
 
 impl fmt::Display for DbError {
@@ -29,6 +29,7 @@ impl fmt::Display for DbError {
             DbError::AlreadyInitialized => write!(f, "database already initialized"),
             DbError::NotInitialized => write!(f, "database not initialized"),
             DbError::Other(s) => write!(f, "{}", s),
+            DbError::NotFound => write!(f, "No value found"),
         }
     }
 }
